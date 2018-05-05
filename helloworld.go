@@ -352,9 +352,9 @@ func main() {
 			}
 		}
 
-		if player1.score == 2 {
+		if player1.score == 3 {
 			state = win
-		} else if player2.score == 2 {
+		} else if player2.score == 3 {
 			state = lose
 		}
 

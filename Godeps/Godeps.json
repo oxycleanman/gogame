@@ -2,9 +2,6 @@
 	"ImportPath": "awesomeProject",
 	"GoVersion": "go1.10",
 	"GodepVersion": "v80",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/veandco/go-sdl2/sdl",
