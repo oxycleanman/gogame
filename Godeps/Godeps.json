@@ -1,0 +1,15 @@
+{
+	"ImportPath": "awesomeProject",
+	"GoVersion": "go1.10",
+	"GodepVersion": "v80",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/veandco/go-sdl2/sdl",
+			"Comment": "v0.2-168-g68ed9ae",
+			"Rev": "68ed9ae2d384339bb0a8d02f31c34dbd696f3740"
+		}
+	]
+}

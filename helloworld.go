@@ -3,18 +3,22 @@ package main
 import (
 	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
-	"time"
 	"math"
 	"math/rand"
+	"time"
 )
 
-const winWidth, winHeight int = 800, 600
+const winWidth, winHeight = 800, 600
 
 type gameState int
 
 const (
 	start gameState = iota
 	play
+	paused
+	win
+	lose
+	score
 )
 
 var state = start
@@ -47,6 +51,58 @@ var nums = [][]byte{
 		1, 1, 1,
 		0, 0, 1,
 		1, 1, 1,
+	},
+}
+
+var letters = [][]byte{
+	{
+		1, 0, 0, 0, 1,
+		1, 0, 0, 0, 1,
+		1, 0, 1, 0, 1,
+		1, 0, 1, 0, 1,
+		1, 1, 1, 1, 1,
+	},
+	{
+		0, 1, 1, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 1, 0, 0,
+		0, 1, 1, 1, 0,
+	},
+	{
+		1, 0, 0, 0, 1,
+		1, 1, 0, 0, 1,
+		1, 0, 1, 0, 1,
+		1, 0, 0, 1, 1,
+		1, 0, 0, 0, 1,
+	},
+	{
+		1, 0, 0, 0, 0,
+		1, 0, 0, 0, 0,
+		1, 0, 0, 0, 0,
+		1, 0, 0, 0, 0,
+		1, 1, 1, 1, 0,
+	},
+	{
+		1, 1, 1, 1, 0,
+		1, 0, 0, 1, 0,
+		1, 0, 0, 1, 0,
+		1, 0, 0, 1, 0,
+		1, 1, 1, 1, 0,
+	},
+	{
+		1, 1, 1, 1, 0,
+		1, 0, 0, 0, 0,
+		1, 1, 1, 1, 0,
+		0, 0, 0, 1, 0,
+		1, 1, 1, 1, 0,
+	},
+	{
+		1, 1, 1, 1, 0,
+		1, 0, 0, 0, 0,
+		1, 1, 1, 0, 0,
+		1, 0, 0, 0, 0,
+		1, 1, 1, 1, 0,
 	},
 }
 
@@ -87,6 +143,26 @@ func drawNumber(pos pos, color color, size int, num int, pixels []byte) {
 	}
 }
 
+func drawLetter(pos pos, color color, size int, letter int, pixels []byte) {
+	startX := int(pos.x) - (size*5)/2
+	startY := int(pos.y) - (size*5)/2
+
+	for i, v := range letters[letter] {
+		if v == 1 {
+			for y := startY; y < startY+size; y++ {
+				for x := startX; x < startX+size; x++ {
+					setPixel(x, y, color, pixels)
+				}
+			}
+		}
+		startX += size
+		if (i+1)%5 == 0 {
+			startY += size
+			startX -= size * 5
+		}
+	}
+}
+
 func (ball *ball) draw(pixels []byte) {
 	for y := -ball.radius; y < ball.radius; y++ {
 		for x := -ball.radius; x < ball.radius; x++ {
@@ -115,10 +191,10 @@ func resetOnScore(ball *ball, ballColor color, rPaddle *paddle, lPaddle *paddle)
 	ball.pos = getCenter()
 	ball.speed = 1.00
 	ball.yv = rand.Float32()
-	ball.color = color{255,255,255}
-	rPaddle.y = float32(winHeight/2)
-	lPaddle.y = float32(winHeight/2)
-	state = start
+	ball.color = ballColor
+	rPaddle.y = float32(winHeight / 2)
+	lPaddle.y = float32(winHeight / 2)
+	state = score
 }
 
 func (ball *ball) update(leftPaddle *paddle, rightPaddle *paddle, elapsedTime float32, keyState []uint8) {
@@ -192,18 +268,18 @@ func (paddle *paddle) draw(pixels []byte) {
 }
 
 func (paddle *paddle) update(keyState []uint8, elapsedTime float32) {
-	if keyState[sdl.SCANCODE_UP] != 0 && !(paddle.y - paddle.h/2 <= 0) {
+	if keyState[sdl.SCANCODE_UP] != 0 && !(paddle.y-paddle.h/2 <= 0) {
 		paddle.y -= paddle.speed * elapsedTime
 	}
-	if keyState[sdl.SCANCODE_DOWN] != 0 && !(paddle.y + paddle.h/2 >= float32(winHeight)){
+	if keyState[sdl.SCANCODE_DOWN] != 0 && !(paddle.y+paddle.h/2 >= float32(winHeight)) {
 		paddle.y += paddle.speed * elapsedTime
 	}
 }
 
 func (paddle *paddle) aiUpdate(ball *ball, elapsedTime float32) {
-	if paddle.y + paddle.h/2 * 0.7 < ball.y + ball.radius {
+	if paddle.y+paddle.h/2*0.7 < ball.y+ball.radius {
 		paddle.y += paddle.speed * elapsedTime
-	} else if paddle.y - paddle.h/2 * 0.7 > ball.y + ball.radius {
+	} else if paddle.y-paddle.h/2*0.7 > ball.y+ball.radius {
 		paddle.y -= paddle.speed * elapsedTime
 	}
 }
@@ -258,9 +334,9 @@ func main() {
 
 	pixels := make([]byte, winWidth*winHeight*4)
 
-	player1 := paddle{pos{50, float32(winHeight/2)}, float32(winWidth)*0.02, float32(winHeight)*0.20, 500, 0, color{255, 255, 255}}
-	player2 := paddle{pos{float32(winWidth - 50), float32(winHeight/2)}, float32(winWidth)*0.02, float32(winHeight)*0.20, 500, 0, color{255, 255, 255}}
-	ball := ball{getCenter(), float32(winHeight)*0.02, 100, 0, 1.00, color{255, 255, 255}}
+	player1 := paddle{pos{50, float32(winHeight / 2)}, float32(winWidth) * 0.02, float32(winHeight) * 0.20, 500, 0, color{255, 255, 255}}
+	player2 := paddle{pos{float32(winWidth - 50), float32(winHeight / 2)}, float32(winWidth) * 0.02, float32(winHeight) * 0.20, 500, 0, color{255, 255, 255}}
+	ball := ball{getCenter(), float32(winHeight) * 0.02, 100, 0, 1.00, color{255, 255, 255}}
 
 	keyState := sdl.GetKeyboardState()
 
@@ -276,25 +352,63 @@ func main() {
 			}
 		}
 
-		if state == play {
-			drawNumber(getCenter(), color{255, 255, 255}, 20, 2, pixels)
-			ball.update(&player1, &player2, elapsedTime, keyState)
-			player1.update(keyState, elapsedTime)
-			player2.aiUpdate(&ball, elapsedTime)
-		} else if state == start {
+		if player1.score == 2 {
+			state = win
+		} else if player2.score == 2 {
+			state = lose
+		}
+
+		if state != play {
 			if keyState[sdl.SCANCODE_SPACE] != 0 {
-				if player1.score == 3 || player2.score == 3 {
-					player1.score = 0
-					player2.score = 0
-				}
 				state = play
 			}
 		}
 
-		clear(pixels)
-		player1.draw(pixels)
-		player2.draw(pixels)
-		ball.draw(pixels)
+		if state == play {
+			if keyState[sdl.SCANCODE_ESCAPE] != 0 {
+				state = paused
+			}
+			ball.update(&player1, &player2, elapsedTime, keyState)
+			player1.update(keyState, elapsedTime)
+			player2.aiUpdate(&ball, elapsedTime)
+		}
+
+		if state == win {
+			player1.score = 0
+			player2.score = 0
+			clear(pixels)
+			player1.draw(pixels)
+			player2.draw(pixels)
+			drawLetter(pos{getCenter().x - 50, getCenter().y}, color{255, 255, 255}, 10, 0, pixels)
+			drawLetter(getCenter(), color{255, 255, 255}, 10, 1, pixels)
+			drawLetter(pos{getCenter().x + 50, getCenter().y}, color{255, 255, 255}, 10, 2, pixels)
+			player1.score = 0
+			player2.score = 0
+		} else if state == lose {
+			clear(pixels)
+			player1.draw(pixels)
+			player2.draw(pixels)
+			drawLetter(pos{getCenter().x - 75, getCenter().y}, color{255, 255, 255}, 10, 3, pixels)
+			drawLetter(pos{getCenter().x - 25, getCenter().y}, color{255, 255, 255}, 10, 4, pixels)
+			drawLetter(pos{getCenter().x + 25, getCenter().y}, color{255, 255, 255}, 10, 5, pixels)
+			drawLetter(pos{getCenter().x + 75, getCenter().y}, color{255, 255, 255}, 10, 6, pixels)
+			player1.score = 0
+			player2.score = 0
+		} else if state == play {
+			clear(pixels)
+			player1.draw(pixels)
+			player2.draw(pixels)
+			ball.draw(pixels)
+		} else if state == start {
+			player1.draw(pixels)
+			player2.draw(pixels)
+			ball.draw(pixels)
+		} else if state == score {
+			clear(pixels)
+			player1.draw(pixels)
+			player2.draw(pixels)
+			ball.draw(pixels)
+		}
 
 		tex.Update(nil, pixels, winWidth*4)
 		renderer.Copy(tex, nil, nil)
